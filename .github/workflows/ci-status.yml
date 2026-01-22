@@ -1,0 +1,33 @@
+name: CI Status Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      status:
+        description: 'CI Status to set'
+        required: true
+        default: 'success'
+        type: choice
+        options:
+        - success
+        - failure
+        - pending
+        - error
+
+jobs:
+  set-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set CI Status
+        run: |
+          echo "Setting CI status to ${{ github.event.inputs.status }}"
+          echo "Totem should now show: ${{ github.event.inputs.status }}"
+      - name: Update README
+        run: |
+          echo "# CI Status: ${{ github.event.inputs.status }}" > README.md
+      - name: Commit status change
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: "Update status to ${{ github.event.inputs.status }}"

@@ -19,16 +19,26 @@ jobs:
     steps:
       - name: Set Status
         env:
-          PAT_TOKEN: ${{ secrets.GH_PAT }}  # Your ESP32 token as repo secret
+          PAT_TOKEN: ${{ secrets.GH_PAT }}
+          STATE: ${{ github.event.inputs.state }}
         run: |
-          SHA=$(curl -s -H "Authorization: Bearer $PAT_TOKEN" \
-            https://api.github.com/repos/tassilo-posegga/QualityGate/commits/main | \
-            grep -o '"sha":"[^"]*"' | head -1 | cut -d'"' -f4)
+          # Get SHA with Python (bulletproof)
+          SHA=$(python3 -c "
+import requests, json, sys
+headers = {'Authorization': 'Bearer $PAT_TOKEN'}
+r = requests.get('https://api.github.com/repos/tassilo-posegga/QualityGate/commits/main', headers=headers)
+data = r.json()
+print(data['sha'])
+          ")
           
-          echo "SHA: $SHA, State: ${{ github.event.inputs.state }}"
+          echo "SHA: $SHA"
+          echo "State: $STATE"
           
-          curl -X POST -s \
+          # Post status
+          RESPONSE=$(curl -s -w "%{http_code}" -X POST \
             -H "Authorization: Bearer $PAT_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/tassilo-posegga/QualityGate/statuses/$SHA" \
-            -d "{\"state\":\"${{ github.event.inputs.state }}\",\"context\":\"QualityGate\",\"description\":\"Totem\"}"
+            -d "{\"state\":\"$STATE\",\"context\":\"QualityGate\",\"description\":\"Totem\"}")
+          
+          echo "Response: $RESPONSE"

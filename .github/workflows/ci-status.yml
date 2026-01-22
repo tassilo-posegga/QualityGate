@@ -1,10 +1,10 @@
-name: CI Status Test
+name: QualityGate Status
 
 on:
   workflow_dispatch:
     inputs:
-      status:
-        description: 'CI Status to set'
+      state:
+        description: 'Set CI Status'
         required: true
         default: 'success'
         type: choice
@@ -18,30 +18,22 @@ permissions:
   contents: write
 
 jobs:
-  set-status:
+  status:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Update README
+      - name: Get main SHA
+        id: sha
         run: |
-          echo "# QualityGate CI: ${{ github.event.inputs.status }}" > README.md
+          echo "sha=$(curl -s https://api.github.com/repos/tassilo-posegga/QualityGate/commits/main | jq -r .sha)" >> $GITHUB_OUTPUT
       
-      - name: Commit README
-        uses: EndBug/add-and-commit@v9
-        with:
-          message: "Set CI status: ${{ github.event.inputs.status }}"
-      
-      - name: Set Commit Status
+      - name: Set Status
         run: |
-          SHA=$(git rev-parse HEAD)
           curl -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${{ github.repository }}/statuses/${SHA} \
-            -d '{
-              "state": "${{ github.event.inputs.status }}",
-              "context": "QualityGate Test",
-              "description": "Manual CI status test"
-            }'
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/tassilo-posegga/QualityGate/statuses/${{ steps.sha.outputs.sha }} \
+            -d "{
+              \"state\": \"${{ github.event.inputs.state }}\",
+              \"context\": \"QualityGate\",
+              \"description\": \"Totem test: ${{ github.event.inputs.state }}\"
+            }"

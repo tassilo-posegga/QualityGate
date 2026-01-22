@@ -13,29 +13,22 @@ on:
         - pending
         - error
 
-permissions:
-  contents: write
-
 jobs:
-  update-status:
+  status:
     runs-on: ubuntu-latest
     steps:
-      - name: Get latest SHA & set status
+      - name: Set Status
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT_TOKEN: ${{ secrets.GH_PAT }}  # Your ESP32 token as repo secret
         run: |
-          SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            https://api.github.com/repos/tassilo-posegga/QualityGate/commits/main | jq -r .sha)
+          SHA=$(curl -s -H "Authorization: Bearer $PAT_TOKEN" \
+            https://api.github.com/repos/tassilo-posegga/QualityGate/commits/main | \
+            grep -o '"sha":"[^"]*"' | head -1 | cut -d'"' -f4)
           
-          echo "Latest SHA: $SHA"
-          echo "Setting state: ${{ github.event.inputs.state }}"
+          echo "SHA: $SHA, State: ${{ github.event.inputs.state }}"
           
-          curl -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
+          curl -X POST -s \
+            -H "Authorization: Bearer $PAT_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
             "https://api.github.com/repos/tassilo-posegga/QualityGate/statuses/$SHA" \
-            -d "{
-              \"state\": \"${{ github.event.inputs.state }}\",
-              \"context\": \"QualityGate\",
-              \"description\": \"Manual: ${{ github.event.inputs.state }}\"
-            }"
+            -d "{\"state\":\"${{ github.event.inputs.state }}\",\"context\":\"QualityGate\",\"description\":\"Totem\"}"

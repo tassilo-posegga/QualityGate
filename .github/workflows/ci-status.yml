@@ -4,9 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       state:
-        description: 'Set CI Status'
+        description: 'CI Status'
         required: true
-        default: 'success'
         type: choice
         options:
         - success
@@ -18,22 +17,25 @@ permissions:
   contents: write
 
 jobs:
-  status:
+  update-status:
     runs-on: ubuntu-latest
     steps:
-      - name: Get main SHA
-        id: sha
+      - name: Get latest SHA & set status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "sha=$(curl -s https://api.github.com/repos/tassilo-posegga/QualityGate/commits/main | jq -r .sha)" >> $GITHUB_OUTPUT
-      
-      - name: Set Status
-        run: |
+          SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            https://api.github.com/repos/tassilo-posegga/QualityGate/commits/main | jq -r .sha)
+          
+          echo "Latest SHA: $SHA"
+          echo "Setting state: ${{ github.event.inputs.state }}"
+          
           curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/tassilo-posegga/QualityGate/statuses/${{ steps.sha.outputs.sha }} \
+            "https://api.github.com/repos/tassilo-posegga/QualityGate/statuses/$SHA" \
             -d "{
               \"state\": \"${{ github.event.inputs.state }}\",
               \"context\": \"QualityGate\",
-              \"description\": \"Totem test: ${{ github.event.inputs.state }}\"
+              \"description\": \"Manual: ${{ github.event.inputs.state }}\"
             }"

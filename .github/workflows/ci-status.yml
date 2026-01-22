@@ -14,20 +14,34 @@ on:
         - pending
         - error
 
+permissions:
+  contents: write
+
 jobs:
   set-status:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set CI Status
-        run: |
-          echo "Setting CI status to ${{ github.event.inputs.status }}"
-          echo "Totem should now show: ${{ github.event.inputs.status }}"
+      
       - name: Update README
         run: |
-          echo "# CI Status: ${{ github.event.inputs.status }}" > README.md
-      - name: Commit status change
+          echo "# QualityGate CI: ${{ github.event.inputs.status }}" > README.md
+      
+      - name: Commit README
         uses: EndBug/add-and-commit@v9
         with:
-          message: "Update status to ${{ github.event.inputs.status }}"
+          message: "Set CI status: ${{ github.event.inputs.status }}"
+      
+      - name: Set Commit Status
+        run: |
+          SHA=$(git rev-parse HEAD)
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/statuses/${SHA} \
+            -d '{
+              "state": "${{ github.event.inputs.status }}",
+              "context": "QualityGate Test",
+              "description": "Manual CI status test"
+            }'
